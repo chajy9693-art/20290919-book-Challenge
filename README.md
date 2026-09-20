@@ -75,17 +75,43 @@ FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 FIREBASE_PROJECT_ID=demo-book-challenge n
 
 ## 빌드 및 배포
 
+### Firebase Hosting
+
 ```bash
 npm run build
 npx firebase deploy --only hosting
 ```
 
-⚠️ **`.env`는 `npm run build`를 실행하기 전에 채워져 있어야 합니다.** Vite는 `VITE_*`
-환경변수를 빌드 시점에 결과물(JS 파일)에 그대로 박아 넣습니다. 나중에 호스팅
-대시보드에서 환경변수를 설정하거나 `.env`를 수정해도, **다시 빌드하지 않으면 반영되지
-않습니다.** 배포된 링크를 열었을 때 다크 네이비 배경만 보이고 아무 내용도 안 뜨면
-(브라우저 개발자 도구 콘솔에 `auth/invalid-api-key` 같은 에러가 보인다면) 거의 항상
-이 문제입니다 — `.env`를 채운 뒤 `npm run build`를 다시 실행하고 재배포하세요.
+### Netlify
+
+리포에 포함된 `netlify.toml`이 빌드 명령(`npm run build`)과 배포 폴더(`dist`)를 지정합니다.
+Netlify 대시보드에서 **Site configuration > Environment variables**에 아래 값들을
+등록하세요(`.env.example`과 동일한 키).
+
+```
+VITE_DEFAULT_CID
+VITE_FIREBASE_API_KEY
+VITE_FIREBASE_AUTH_DOMAIN
+VITE_FIREBASE_PROJECT_ID
+VITE_FIREBASE_STORAGE_BUCKET
+VITE_FIREBASE_MESSAGING_SENDER_ID
+VITE_FIREBASE_APP_ID
+```
+
+값을 등록/수정한 뒤에는 **반드시 새 배포(Trigger deploy)를 실행**해야 반영됩니다(아래 참고).
+Firestore/Storage 보안 규칙은 Netlify 빌드에 포함되지 않으므로, `npx firebase deploy
+--only firestore:rules,storage:rules`는 별도로 한 번 실행해 두어야 합니다.
+
+### ⚠️ 어떤 플랫폼이든: 배포 후 빈 화면/에러 메시지가 보이면
+
+Vite는 `VITE_*` 환경변수를 **빌드 시점**에 결과물(JS 파일)에 그대로 박아 넣습니다. 호스팅
+대시보드에서 환경변수를 나중에 설정하거나 수정해도, **그 값으로 다시 빌드하지 않으면
+반영되지 않습니다.** 배포된 링크를 열었을 때 "앱을 불러오지 못했습니다" 메시지나
+`auth/invalid-api-key` 같은 에러가 보이면 거의 항상 이 문제입니다 — 순서는 다음과 같습니다.
+
+1. Firebase 콘솔에서 프로젝트/웹 앱이 만들어져 있는지 확인 (위 "Firebase 설정" 참고)
+2. 호스팅 플랫폼의 환경변수 설정에 실제 값이 들어가 있는지 확인
+3. 새 배포(재빌드)를 트리거 — 환경변수만 바꾸고 재배포를 안 하면 반영되지 않습니다
 
 ## 테스트
 
