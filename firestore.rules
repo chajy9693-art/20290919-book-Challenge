@@ -1,0 +1,54 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /challenges/{cid} {
+      allow read: if request.auth != null;
+      allow write: if false;
+
+      match /missions/{missionId} {
+        allow read: if request.auth != null;
+        allow write: if false;
+      }
+
+      match /participants/{pid} {
+        allow read: if request.auth != null;
+        allow write: if false;
+      }
+
+      match /submissions/{submissionId} {
+        allow read: if request.auth != null;
+        allow delete: if false;
+
+        allow create: if request.auth != null
+          && isValidSubmission()
+          && matchesDocId(submissionId, request.resource.data);
+
+        allow update: if request.auth != null
+          && isValidSubmission()
+          && matchesDocId(submissionId, request.resource.data)
+          && request.resource.data.pid == resource.data.pid
+          && request.resource.data.missionId == resource.data.missionId
+          && request.resource.data.createdAt == resource.data.createdAt;
+
+        function matchesDocId(id, data) {
+          return id == data.pid + '_' + data.missionId;
+        }
+
+        function isValidSubmission() {
+          let data = request.resource.data;
+          return data.keys().hasOnly(['pid', 'missionId', 'images', 'reflection', 'createdAt', 'updatedAt'])
+            && data.keys().hasAll(['pid', 'missionId', 'images', 'reflection', 'createdAt', 'updatedAt'])
+            && data.pid is string
+            && data.missionId is string
+            && data.images is list
+            && data.images.size() >= 1 && data.images.size() <= 3
+            && data.reflection is string
+            && data.reflection.size() >= 10 && data.reflection.size() <= 2000
+            && data.createdAt is timestamp
+            && data.updatedAt is timestamp;
+        }
+      }
+    }
+  }
+}
