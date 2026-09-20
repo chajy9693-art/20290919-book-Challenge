@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { subscribeSubmissions, upsertSubmission as upsertSubmissionInFirestore } from '../firebase/firestore'
+import { getLocalSubmissions, subscribeLocalSubmissions, upsertLocalSubmission } from '../lib/localSubmissions'
 import type { Submission, SubmissionImage } from '../types'
 
 export interface UpsertSubmissionInput {
@@ -10,9 +10,8 @@ export interface UpsertSubmissionInput {
 }
 
 /**
- * 참여자(pid)의 제출 이력을 실시간 구독한다. 다른 브라우저의 제출도 즉시 반영된다.
- * loading은 pid가 바뀐 뒤 첫 스냅샷이 도착하기 전까지 true다. 제출 폼이 이 값을 보고
- * 기존 제출 데이터가 도착하기 전에 빈 폼으로 마운트되는 것을 막는다.
+ * 참여자(pid)의 제출 이력을 브라우저(IndexedDB)에서 읽는다. 이 브라우저에 남긴
+ * 제출만 보이며, 다른 기기·브라우저와는 동기화되지 않는다.
  */
 export function useSubmissions(cid: string, pid: string | null) {
   const [submissions, setSubmissions] = useState<Submission[]>([])
@@ -24,16 +23,28 @@ export function useSubmissions(cid: string, pid: string | null) {
       setLoading(false)
       return
     }
+
+    let cancelled = false
     setLoading(true)
-    const unsubscribe = subscribeSubmissions(cid, pid, (next) => {
-      setSubmissions(next)
-      setLoading(false)
-    })
-    return unsubscribe
+
+    async function load() {
+      const next = await getLocalSubmissions(cid, pid as string)
+      if (!cancelled) {
+        setSubmissions(next)
+        setLoading(false)
+      }
+    }
+
+    void load()
+    const unsubscribe = subscribeLocalSubmissions(() => void load())
+    return () => {
+      cancelled = true
+      unsubscribe()
+    }
   }, [cid, pid])
 
   const upsertSubmission = useCallback(
-    (input: UpsertSubmissionInput) => upsertSubmissionInFirestore(cid, input),
+    (input: UpsertSubmissionInput) => upsertLocalSubmission(cid, input),
     [cid],
   )
 

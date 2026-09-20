@@ -14,7 +14,7 @@ import { getTodayMission } from '../lib/missions'
 export function Home() {
   const cid = useMemo(() => getCid(), [])
   const today = useMemo(() => todayKST(), [])
-  const { challenge, missions, participants, loading, error } = useChallengeData(cid)
+  const { challenge, missions, participants } = useChallengeData()
   const { pid, setPid } = useSelectedParticipant()
   const { submissions, loading: submissionsLoading, upsertSubmission } = useSubmissions(cid, pid)
 
@@ -30,14 +30,6 @@ export function Home() {
   function selectMissionAndScroll(missionId: string) {
     setOverrideMissionId(missionId)
     submitCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  }
-
-  if (loading) {
-    return <p className="p-10 text-center text-text-muted">불러오는 중...</p>
-  }
-
-  if (error || !challenge) {
-    return <p className="p-10 text-center text-error">{error ?? '챌린지를 찾을 수 없습니다.'}</p>
   }
 
   return (
