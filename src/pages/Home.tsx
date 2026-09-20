@@ -14,25 +14,31 @@ import { getTodayMission } from '../lib/missions'
 export function Home() {
   const cid = useMemo(() => getCid(), [])
   const today = useMemo(() => todayKST(), [])
-  const { challenge, missions, participants, loading } = useChallengeData()
+  const { challenge, missions, participants, loading, error } = useChallengeData(cid)
   const { pid, setPid } = useSelectedParticipant()
-  const { submissions, upsertSubmission } = useSubmissions(pid)
+  const { submissions, loading: submissionsLoading, upsertSubmission } = useSubmissions(cid, pid)
 
   const todayMission = useMemo(() => getTodayMission(missions, today), [missions, today])
-  const [selectedMissionId, setSelectedMissionId] = useState<string | null>(
-    todayMission.kind === 'mission' ? todayMission.mission.id : null,
-  )
+  const [overrideMissionId, setOverrideMissionId] = useState<string | null>(null)
+  const selectedMissionId =
+    overrideMissionId ?? (todayMission.kind === 'mission' ? todayMission.mission.id : null)
 
   const submitCardRef = useRef<HTMLDivElement>(null)
   const selectedMission = missions.find((m) => m.id === selectedMissionId) ?? null
   const existingSubmission = submissions.find((s) => s.missionId === selectedMissionId) ?? null
 
   function selectMissionAndScroll(missionId: string) {
-    setSelectedMissionId(missionId)
+    setOverrideMissionId(missionId)
     submitCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
-  if (loading) return null
+  if (loading) {
+    return <p className="p-10 text-center text-text-muted">불러오는 중...</p>
+  }
+
+  if (error || !challenge) {
+    return <p className="p-10 text-center text-error">{error ?? '챌린지를 찾을 수 없습니다.'}</p>
+  }
 
   return (
     <div className="mx-auto max-w-content px-4 pb-16">
@@ -42,13 +48,21 @@ export function Home() {
         <MissionCard
           missions={missions}
           selectedMission={selectedMission}
-          onSelectMission={setSelectedMissionId}
+          onSelectMission={setOverrideMissionId}
           today={today}
           startDate={challenge.startDate}
         />
 
         <div ref={submitCardRef}>
-          {selectedMission ? (
+          {!selectedMission ? (
+            <section className="rounded-card border border-border bg-card p-5 text-center text-text-muted sm:p-6">
+              아직 공개된 미션이 없어요.
+            </section>
+          ) : pid && submissionsLoading ? (
+            <section className="rounded-card border border-border bg-card p-5 text-center text-text-muted sm:p-6">
+              불러오는 중...
+            </section>
+          ) : (
             <SubmitForm
               key={`${pid ?? 'anonymous'}-${selectedMission.id}`}
               cid={cid}
@@ -59,10 +73,6 @@ export function Home() {
               existingSubmission={existingSubmission}
               onSubmit={upsertSubmission}
             />
-          ) : (
-            <section className="rounded-card border border-border bg-card p-5 text-center text-text-muted sm:p-6">
-              아직 공개된 미션이 없어요.
-            </section>
           )}
         </div>
 
@@ -74,12 +84,7 @@ export function Home() {
           onSelectMission={selectMissionAndScroll}
         />
 
-        <MyHistory
-          missions={missions}
-          submissions={submissions}
-          pid={pid}
-          onEdit={selectMissionAndScroll}
-        />
+        <MyHistory missions={missions} submissions={submissions} pid={pid} onEdit={selectMissionAndScroll} />
       </div>
 
       <footer className="mt-10 text-center text-xs text-text-muted">

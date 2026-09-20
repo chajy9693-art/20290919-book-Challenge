@@ -72,7 +72,10 @@ function toSubmission(id: string, data: SubmissionDoc): Submission {
   }
 }
 
-/** 참여자(pid)의 제출 이력을 실시간 구독한다. 다른 브라우저의 제출도 즉시 반영된다. */
+/**
+ * 참여자(pid)의 제출 이력을 실시간 구독한다. 다른 브라우저의 제출도 즉시 반영된다.
+ * serverTimestamps: 'estimate'로 서버 확정 전(pending) 타임스탬프도 즉시 읽을 수 있게 한다.
+ */
 export function subscribeSubmissions(
   cid: string,
   pid: string,
@@ -80,7 +83,9 @@ export function subscribeSubmissions(
 ): Unsubscribe {
   const q = query(submissionsColRef(cid), where('pid', '==', pid))
   return onSnapshot(q, (snap) => {
-    onChange(snap.docs.map((d) => toSubmission(d.id, d.data() as SubmissionDoc)))
+    onChange(
+      snap.docs.map((d) => toSubmission(d.id, d.data({ serverTimestamps: 'estimate' }) as SubmissionDoc)),
+    )
   })
 }
 

@@ -20,7 +20,7 @@ interface SubmitFormProps {
   pid: string | null
   onSelectPid: (pid: string) => void
   existingSubmission: Submission | null
-  onSubmit: (input: SubmitInput) => void
+  onSubmit: (input: SubmitInput) => Promise<void>
 }
 
 export function SubmitForm({
@@ -34,8 +34,9 @@ export function SubmitForm({
 }: SubmitFormProps) {
   const [images, setImages] = useState<SubmissionImage[]>(existingSubmission?.images ?? [])
   const [reflection, setReflection] = useState(existingSubmission?.reflection ?? '')
-  const [errors, setErrors] = useState<{ pid?: string; images?: string; reflection?: string }>({})
+  const [errors, setErrors] = useState<{ pid?: string; images?: string; reflection?: string; submit?: string }>({})
   const [toast, setToast] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
     if (!toast) return
@@ -43,7 +44,7 @@ export function SubmitForm({
     return () => clearTimeout(timer)
   }, [toast])
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     const nextErrors: typeof errors = {}
     if (!pid) nextErrors.pid = '참여자를 선택해 주세요.'
@@ -54,8 +55,15 @@ export function SubmitForm({
     setErrors(nextErrors)
     if (Object.keys(nextErrors).length > 0 || !pid) return
 
-    onSubmit({ pid, missionId: mission.id, images, reflection })
-    setToast(existingSubmission ? '수정 완료' : '제출 완료')
+    setSubmitting(true)
+    try {
+      await onSubmit({ pid, missionId: mission.id, images, reflection })
+      setToast(existingSubmission ? '수정 완료' : '제출 완료')
+    } catch {
+      setErrors({ submit: '제출에 실패했어요. 다시 시도해 주세요.' })
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   const isEditing = Boolean(existingSubmission)
@@ -102,12 +110,15 @@ export function SubmitForm({
           </div>
         </div>
 
+        {errors.submit && <p className="text-center text-sm text-error">{errors.submit}</p>}
+
         <div className="flex justify-center">
           <button
             type="submit"
-            className="rounded-full bg-accent px-10 py-3 text-sm font-bold text-accent-fg hover:opacity-90"
+            disabled={submitting}
+            className="rounded-full bg-accent px-10 py-3 text-sm font-bold text-accent-fg hover:opacity-90 disabled:opacity-60"
           >
-            {isEditing ? '수정하기' : '제출하기'}
+            {submitting ? '처리 중...' : isEditing ? '수정하기' : '제출하기'}
           </button>
         </div>
       </form>

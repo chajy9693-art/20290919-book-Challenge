@@ -1,5 +1,5 @@
 import { deleteObject, getDownloadURL, ref, uploadBytesResumable } from 'firebase/storage'
-import type { ImageStore, UploadParams, UploadResult } from '../lib/imageStore'
+import type { ImageStore, UploadParams, UploadResult } from '../types'
 import { storage } from './config'
 
 export class FirebaseImageStore implements ImageStore {

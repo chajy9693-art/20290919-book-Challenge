@@ -1,19 +1,53 @@
-import { mockChallenge, mockMissions, mockParticipants } from '../mocks/data'
+import { useEffect, useState } from 'react'
+import { ensureAnonymousAuth } from '../firebase/auth'
+import { fetchChallenge, fetchMissions, fetchParticipants } from '../firebase/firestore'
 import type { Challenge, Mission, Participant } from '../types'
 
 export interface ChallengeData {
-  challenge: Challenge
+  challenge: Challenge | null
   missions: Mission[]
   participants: Participant[]
   loading: boolean
+  error: string | null
 }
 
-/** 1단계(목데이터) 구현. 2단계에서 Firestore 구독으로 교체된다. */
-export function useChallengeData(): ChallengeData {
-  return {
-    challenge: mockChallenge,
-    missions: mockMissions,
-    participants: mockParticipants,
-    loading: false,
-  }
+export function useChallengeData(cid: string): ChallengeData {
+  const [state, setState] = useState<ChallengeData>({
+    challenge: null,
+    missions: [],
+    participants: [],
+    loading: true,
+    error: null,
+  })
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function load() {
+      try {
+        await ensureAnonymousAuth()
+        const [challenge, missions, participants] = await Promise.all([
+          fetchChallenge(cid),
+          fetchMissions(cid),
+          fetchParticipants(cid),
+        ])
+        if (!cancelled) setState({ challenge, missions, participants, loading: false, error: null })
+      } catch (err) {
+        if (!cancelled) {
+          setState((prev) => ({
+            ...prev,
+            loading: false,
+            error: err instanceof Error ? err.message : '데이터를 불러오지 못했습니다.',
+          }))
+        }
+      }
+    }
+
+    void load()
+    return () => {
+      cancelled = true
+    }
+  }, [cid])
+
+  return state
 }
