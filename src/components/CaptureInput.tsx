@@ -46,6 +46,9 @@ export function CaptureInput({ images, onChange, cid, pid, missionId, disabled }
       setError('캡처는 최대 3장까지 올릴 수 있어요.')
     }
     const toProcess = list.slice(0, Math.max(remainingSlots, 0))
+    // images prop은 각 반복의 await 사이에 갱신되지 않으므로, 누적 목록을 직접 들고 있어야
+    // 여러 장을 연속 업로드할 때 이전 결과가 다음 onChange 호출에 덮어써지지 않는다.
+    let accumulated = images
 
     for (const file of toProcess) {
       const validationError = validate(file)
@@ -69,7 +72,8 @@ export function CaptureInput({ images, onChange, cid, pid, missionId, disabled }
             setUploading((prev) => prev.map((item) => (item.id === localId ? { ...item, progress: pct } : item)))
           },
         })
-        onChange([...images, result])
+        accumulated = [...accumulated, result]
+        onChange(accumulated)
       } catch {
         setError('업로드에 실패했어요. 다시 시도해 주세요.')
       } finally {
